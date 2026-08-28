@@ -27,7 +27,7 @@ jobs:
 
       - name: Lint BigQuery SQL Dialect
         run: |
-          sqlfluff lint src/ --dialect bigquery
+          sqlfluff lint . --dialect bigquery
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -41,7 +41,7 @@ jobs:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           echo "Executing dry-run assertions across source pipelines..."
-          for file in src/*.sql; do
+          for file in *.sql; do
             echo "Validating $file..."
             bq query --use_legacy_sql=false --dry_run < "$file"
           done
