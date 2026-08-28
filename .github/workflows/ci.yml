@@ -1,0 +1,47 @@
+# .github/workflows/ci.yml
+name: BigQuery Pipeline CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-and-test:
+    name: Lint & Dry-Run BigQuery SQL
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python for SQLFluff Linter
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install SQL Linter
+        run: |
+          pip install sqlfluff
+
+      - name: Lint BigQuery SQL Dialect
+        run: |
+          sqlfluff lint src/ --dialect bigquery
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        if: env.GCP_SA_KEY != ''
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Execute BigQuery Dry-Run Validation
+        if: env.GCP_SA_KEY != ''
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "Executing dry-run assertions across source pipelines..."
+          for file in src/*.sql; do
+            echo "Validating $file..."
+            bq query --use_legacy_sql=false --dry_run < "$file"
+          done
