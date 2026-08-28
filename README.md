@@ -192,4 +192,61 @@ sql-logistics-omniroute-turnaround-pipeline/
 
 Deploy and execute the **OmniRoute Freight Systems** BigQuery relational pipeline and disaster recovery failover matrix using the following workflow:
 
-## Prerequisites & Environment Authentication
+### Prerequisites & Environment Authentication
+
+•Install the **Google Cloud SDK** (gcloud CLI)         and the BigQuery command-line tool (bq).
+
+•Authenticate credentials against your Google Cloud project:  
+```bash
+gcloud auth application-default login
+gcloud config set project omniroute-data-prod
+```
+### Step 1: Clone Repository & Setup Directory
+``bash
+git clone https://github.com/Elsamag/sql-logistics-omniroute-turnaround-pipeline.git
+cd sql-logistics-omniroute-turnaround-pipeline
+```
+### Step 2: Initialize Target Datasets & Schema Tables
+Create the operational, quarantine, and audit datasets in BigQuery:
+```bash
+bq --location=US mk --dataset omniroute-data-prod:omniroute_logistics
+```
+```bash
+bq --location=US mk --dataset omniroute-data-prod:omniroute_quarantine
+```
+```bash
+bq --location=US mk --dataset omniroute-data-prod:omniroute_audit
+```
+### Step 3: Execute Dry-Run Cost & Partition Pruning Validation
+Verify query syntax, memory bounds, and estimated byte scan volume without incurring processing costs:  
+```bash
+bq query \
+  --use_legacy_sql=false \
+  --dry_run \
+  < src/01_omniroute_innerjoin_pipeline.sql
+```
+Expected Output: Query will process 1.82 GB when run.
+
+### Step 4: Execute Production Relational Pipeline
+Deploy the partition-pruned inner join pipeline to curate clean dispatch events:
+```bash
+bq query \
+  --use_legacy_sql=false \
+  --destination_table=omniroute_logistics.curated_dispatch_pipeline \
+  --replace \
+  < src/01_omniroute_innerjoin_pipeline.sql
+```
+### Step 5: Run Incident Failover & Quarantine Health Check
+Run the failover matrix assertions to ensure unlinked entities or corrupted keys are isolated to quarantine tables:  
+```bash
+bq query \
+  --use_legacy_sql=false \
+  < src/02_incident_failover_quarantine.sql
+```
+### Step 6: Automated Verification & Latency Assertion
+Audit table partitioning, clustering, and row count matching:
+```bash
+bq show --format=prettyjson omniroute_logistics.curated_dispatch_pipeline | grep -E "numRows|totalBytes"
+```
+
+
