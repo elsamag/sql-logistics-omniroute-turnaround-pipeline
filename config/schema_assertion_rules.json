@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "metadata": {
+    "organization": "Elsamag IT Solutions",
+    "lead_consultant": "Samuel Chinwendu Agu",
+    "client_system": "OmniRoute Freight Systems",
+    "target_pipeline": "sql-logistics-omniroute-turnaround-pipeline",
+    "version": "1.0.0",
+    "last_audited": "2026-08-28"
+  },
+  "pipeline_configuration": {
+    "project_id": "omniroute-data-prod",
+    "target_dataset": "omniroute_logistics",
+    "target_table": "curated_dispatch_pipeline",
+    "quarantine_dataset": "omniroute_quarantine",
+    "quarantine_table": "quarantine_trips"
+  },
+  "partition_pruning_constraints": {
+    "partition_column": "dispatch_timestamp",
+    "partition_granularity": "DAY",
+    "enforce_partition_filter": true,
+    "max_allowed_scan_days": 30,
+    "max_query_scan_bytes_limit": 5368709120
+  },
+  "schema_contract": {
+    "strict_mode": true,
+    "fields": [
+      {
+        "name": "trip_id",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "regex": "^TRP-[0-9]{5,10}$",
+        "allow_nulls": false
+      },
+      {
+        "name": "hashed_driver_token",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "regex": "^[a-f0-9]{64}$",
+        "description": "Cryptographic SHA-256 hex digest of driver_id; zero raw PII permitted.",
+        "allow_nulls": false
+      },
+      {
+        "name": "fleet_region",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "allowed_values": ["NORTH", "SOUTH", "EAST", "WEST", "CENTRAL", "HUB_INTERMODAL"],
+        "allow_nulls": false
+      },
+      {
+        "name": "vehicle_id",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "regex": "^VEH-[0-9]{4,8}$",
+        "allow_nulls": false
+      },
+      {
+        "name": "vehicle_class",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "allowed_values": ["Class_8_Heavy", "Class_7_Medium", "Sprinter_Van", "Intermodal_Carrier"],
+        "allow_nulls": false
+      },
+      {
+        "name": "origin_hub",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "regex": "^HUB-[0-9]{2,4}$",
+        "allow_nulls": false
+      },
+      {
+        "name": "destination_hub",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "regex": "^HUB-[0-9]{2,4}$",
+        "allow_nulls": false
+      },
+      {
+        "name": "delay_minutes",
+        "type": "FLOAT64",
+        "mode": "NULLABLE",
+        "min_value": -120.0,
+        "max_value": 2880.0,
+        "allow_nulls": true
+      },
+      {
+        "name": "trip_status",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "allowed_values": ["Completed", "In_Transit", "Delayed"],
+        "allow_nulls": false
+      },
+      {
+        "name": "dispatch_timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "allow_nulls": false
+      },
+      {
+        "name": "ingestion_timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "allow_nulls": false
+      }
+    ]
+  },
+  "relational_integrity_rules": {
+    "foreign_key_bridges": [
+      {
+        "source_key": "driver_id",
+        "referenced_table": "omniroute_logistics.master_drivers",
+        "referenced_key": "driver_id",
+        "on_orphan_policy": "ROUTE_TO_QUARANTINE"
+      },
+      {
+        "source_key": "vehicle_id",
+        "referenced_table": "omniroute_logistics.fleet_inventory",
+        "referenced_key": "vehicle_id",
+        "on_orphan_policy": "ROUTE_TO_QUARANTINE"
+      }
+    ],
+    "discrepancy_thresholds": {
+      "max_allowable_join_dropout_rate": 0.005,
+      "max_allowable_null_pk_count": 0,
+      "unmatched_record_incident_tier": "Tier_2_Moderate"
+    }
+  },
+  "incident_failover_gate": {
+    "auto_quarantine_enabled": true,
+    "halt_downstream_sync_on_schema_drift": true,
+    "notify_on_call": true,
+    "alert_endpoint": "https://monitoring.omniroute.internal/v1/alerts/data-pipeline"
+  }
+}
