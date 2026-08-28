@@ -41,10 +41,10 @@ The pipeline executes a 3-tier architectural flow engineered for zero data loss,
            ▼
 [ FAILOVER MATRIX ]   ──► Disaster Recovery Rollback & Validation Gate
 ```
-### Step 1 — Ingestion & Partition Pruning: Filters physical storage blocks using _TABLE_SUFFIX partition boundaries, pruning byte consumption by over 99.6%.
-### Step 2 — Strict Relational Matching: Establishes unambiguous inner-join bridges across trips, drivers, and vehicles on validated primary/foreign keys (driver_id, vehicle_id).
-### Step 3 — Cryptographic Sanitization: Applies TO_HEX(SHA256(LOWER(TRIM(driver_id)))) to eliminate plain-text PII leakage.
-## Step 4 — Add-On 6 Incident Failover Matrix: Intercepts unjoined transaction anomalies and routes them to a dedicated failover table with automatic rollback state logging.
+**Step 1 — Ingestion & Partition Pruning**: Filters physical storage blocks using _TABLE_SUFFIX partition boundaries, pruning byte consumption by over 99.6%.
+**Step 2 — Strict Relational Matching**: Establishes unambiguous inner-join bridges across trips, drivers, and vehicles on validated primary/foreign keys (driver_id, vehicle_id).
+**Step 3 — Cryptographic Sanitization**: Applies TO_HEX(SHA256(LOWER(TRIM(driver_id)))) to eliminate plain-text PII leakage.
+**Step 4 — Add-On 6 Incident Failover Matrix**: Intercepts unjoined transaction anomalies and routes them to a dedicated failover table with automatic rollback state logging.
 
 
 ##  Production Implementation Snippet
@@ -200,9 +200,10 @@ Deploy and execute the **OmniRoute Freight Systems** BigQuery relational pipelin
 ```bash
 gcloud auth application-default login
 gcloud config set project omniroute-data-prod
+```
 
 ### Step 1: Clone Repository & Setup Directory
-``bash
+```bash
 git clone https://github.com/Elsamag/sql-logistics-omniroute-turnaround-pipeline.git
 cd sql-logistics-omniroute-turnaround-pipeline
 ```
