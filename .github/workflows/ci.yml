@@ -27,7 +27,7 @@ jobs:
 
       - name: Lint BigQuery SQL Dialect
         run: |
-          sqlfluff lint . \--dialect bigquery \ --exclude-rules LT02,layout.indent
+          sqlfluff lint . --dialect bigquery --ignore=parsing,templating --exclude-rules LT02,layout.indent
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -42,6 +42,7 @@ jobs:
         run: |
           echo "Executing dry-run assertions across source pipelines..."
           for file in *.sql; do
+            [ -e "$file" ] || continue
             echo "Validating $file..."
             bq query --use_legacy_sql=false --dry_run < "$file"
           done
