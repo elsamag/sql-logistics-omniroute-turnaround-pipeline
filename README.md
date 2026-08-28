@@ -253,4 +253,19 @@ Audit table partitioning, clustering, and row count matching:
 bq show --format=prettyjson omniroute_logistics.curated_dispatch_pipeline | grep -E "numRows|totalBytes"
 ```
 
+### 💼 Enterprise Data Architecture & Infrastructure Consulting
+
+**Elsamag IT Solutions** provides end-to-end data pipeline optimization, BigQuery architecture auditing, cybersecurity log ingestion, and database failover engineering.
+
+* **Lead Technical Consultant:** Samuel Chinwendu Agu
+* **Specializations:** BigQuery Query Optimization, Relational Integrity Audits, Zero-Trust PII Masking, Incident Recovery Systems.
+* **Inquiries & Retainers:** Direct project chats and infrastructure audit retainers can be initiated via [github.com/Elsamag](https://github.com/Elsamag) or via Upwork enterprise contract dispatch.
+
+---
+
+### ⭐ Support & Feedback
+
+If this project or repository helped you optimize your infrastructure or solve a technical bottleneck, please give it a **Star (⭐)** on GitHub!
+
+Follow **[Samuel Chinwendu Agu (@Elsamag)](https://github.com/Elsamag)** for upcoming open-source enterprise analytics, cybersecurity, and data engineering tools.
 
