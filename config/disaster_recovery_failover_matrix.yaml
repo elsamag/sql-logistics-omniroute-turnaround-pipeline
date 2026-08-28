@@ -1,0 +1,110 @@
+# ==============================================================================
+# Enterprise Practice: Elsamag IT Solutions
+# Lead Technical Consultant: Samuel Chinwendu Agu
+# Project: OmniRoute Freight Systems Fleet Turnaround & Anomaly Pipeline
+# Ecosystem: OmniRoute Freight Systems (Logistics & Fleet Ops)
+# Dialect Target: Google Cloud BigQuery Standard SQL
+# Asset: config/disaster_recovery_failover_matrix.yaml
+# Dynamic Add-On: ADDON_6_DISASTER_RECOVERY_ROLLBACK_INCIDENT_FAILOVER_MATRIX
+# ==============================================================================
+
+version: "1.0.0"
+metadata:
+  system_name: "OmniRoute Logistics Telemetry & Dispatch Pipeline"
+  lead_consultant: "Samuel Chinwendu Agu"
+  consultancy: "Elsamag IT Solutions"
+  last_audited: "2026-08-28"
+  compliance_standard: "Zero-Data-Loss / Zero-PII Exposure"
+
+environment:
+  gcp_project: "omniroute-data-prod"
+  region: "US"
+  primary_dataset: "omniroute_logistics"
+  quarantine_dataset: "omniroute_quarantine"
+  audit_dataset: "omniroute_audit"
+  snapshot_dataset: "omniroute_snapshots"
+
+failover_matrix:
+  # ----------------------------------------------------------------------------
+  # TIER 1: DATA VALIDATION & RELATIONAL ANOMALIES (MINOR)
+  # ----------------------------------------------------------------------------
+  tier_1_validation_anomaly:
+    severity: "LOW_TO_MODERATE"
+    description: "Corrupted records, missing foreign keys, or NULL primary trip identifiers[span_0](start_span)"[span_0](end_span)
+    trigger_conditions:
+      - rule_id: "RULE_NULL_TRIP_ID"
+        expression: "SELECT COUNT(*) FROM staging WHERE trip_id IS NULL[span_1](start_span)"[span_1](end_span)
+        threshold: "> 0[span_2](start_span)"[span_2](end_span)
+      - rule_id: "RULE_UNMATCHED_DRIVER_KEY"
+        expression: "SELECT COUNT(*) FROM staging WHERE driver_id NOT IN (SELECT driver_id FROM master_drivers)"
+        threshold: "> 0"
+    automated_action: "FAILOVER_QUARANTINE[span_3](start_span)"[span_3](end_span)
+    quarantine_policy:
+      target_table: "omniroute_quarantine.failed_trips[span_4](start_span)"[span_4](end_span)
+      include_timestamp: true[span_5](start_span)[span_5](end_span)
+      non_blocking_retry: true[span_6](start_span)[span_6](end_span)
+    sla_mttr_target_minutes: 5
+    runbook_ref: "docs/runbooks/RB_T1_QUARANTINE_RETRY.md"
+
+  # ----------------------------------------------------------------------------
+  # TIER 2: LATENCY SPIKES, LOCK CONTENTION & JOIN DRIFT (MODERATE)
+  # ----------------------------------------------------------------------------
+  tier_2_latency_and_contention:
+    severity: "HIGH"
+    description: "Execution latency degradation, lock timeouts, or join dropout spikes[span_7](start_span)"[span_7](end_span)
+    trigger_conditions:
+      - rule_id: "RULE_QUERY_TIMEOUT"
+        metric: "query_execution_time_seconds"
+        threshold: "> 5.0[span_8](start_span)"[span_8](end_span)
+      - rule_id: "RULE_JOIN_DROPOUT_RATE"
+        expression: "SELECT (COUNT(t.trip_id) - COUNT(d.driver_id)) / COUNT(t.trip_id) FROM staging"
+        threshold: "> 0.005"  # Dropout exceeds 0.5%
+    automated_action: "TERMINATE_CURSOR_AND_FALLBACK[span_9](start_span)"[span_9](end_span)
+    mitigation_steps:
+      - "Auto-terminate active BigQuery query execution job[span_10](start_span)"[span_10](end_span)
+      - "Release active read/write locks on staging partitions[span_11](start_span)"[span_11](end_span)
+      - "Route downstream reporting queries to read-replica cache[span_12](start_span)"[span_12](end_span)
+      - "Dispatch alert notification to on-call data engineering team"
+    sla_mttr_target_minutes: 15
+    runbook_ref: "docs/runbooks/RB_T2_LOCK_CONTENTION_RESOLVE.md"
+
+  # ----------------------------------------------------------------------------
+  # TIER 3: CRITICAL ENGINE CRASH & PARTITION CORRUPTION (FATAL)
+  # ----------------------------------------------------------------------------
+  tier_3_engine_fatal_crash:
+    severity: "CRITICAL"
+    description: "Database engine crash, table partition drop, or catastrophic pipeline failure[span_13](start_span)"[span_13](end_span)
+    trigger_conditions:
+      - rule_id: "RULE_SYSTEM_EXCEPTION"
+        trap: "EXCEPTION WHEN ERROR[span_14](start_span)"[span_14](end_span)
+      - rule_id: "RULE_PARTITION_UNAVAILABLE"
+        expression: "SELECT COUNT(*) FROM dispatch_events_partition_check"
+        threshold: "== 0"
+    automated_action: "POINT_IN_TIME_SNAPSHOT_RESTORE[span_15](start_span)"[span_15](end_span)
+    rollback_policy:
+      source_snapshot: "omniroute_snapshots.production_triage_live_t_minus_1[span_16](start_span)"[span_16](end_span)
+      target_table: "omniroute_logistics.production_triage_live[span_17](start_span)"[span_17](end_span)
+      log_audit_table: "omniroute_audit.incident_failover_log[span_18](start_span)"[span_18](end_span)
+      audit_payload:
+        timestamp: "CURRENT_TIMESTAMP()[span_19](start_span)"[span_19](end_span)
+        error_message: "@@error.message[span_20](start_span)"[span_20](end_span)
+        status_flag: "ROLLBACK_SUCCESSFUL_REVERTED_TO_SNAPSHOT[span_21](start_span)"[span_21](end_span)
+    sla_mttr_target_minutes: 30
+    runbook_ref: "docs/runbooks/RB_T3_SNAPSHOT_RESTORE.md"
+
+# ------------------------------------------------------------------------------
+# AUDIT & MONITORING TELEMETRY
+# ------------------------------------------------------------------------------
+telemetry_logging:
+  audit_retention_days: 90
+  quarantine_retention_days: 30
+  snapshot_cadence: "INTERVAL 1 HOUR"
+  notification_channels:
+    pagerduty:
+      enabled: true
+      service_key_env: "PAGERDUTY_OMNIROUTE_KEY"
+      severity_filter: ["HIGH", "CRITICAL"]
+    slack_webhook:
+      enabled: true
+      channel: "#ops-omniroute-data-alerts"
+      severity_filter: ["LOW_TO_MODERATE", "HIGH", "CRITICAL"]
