@@ -145,7 +145,7 @@ SELECT * FROM matched_relational_pipeline;
 * **Join Integrity Rate:** **100.0%** (Zero orphan dropouts across 450,000 monthly trips)
 * **PII Compliance Index:** **100% Zero-Trust SHA-256 Masked**
 
-### Add-On 6: Disaster Recovery & Incident Failover Matrix
+###  Disaster Recovery & Incident Failover Matrix
 
 | Incident Severity | Trigger Condition | Automated Failover Action | Recovery Runbook | MTTR Target |
 | :--- | :--- | :--- | :--- | :--- |
